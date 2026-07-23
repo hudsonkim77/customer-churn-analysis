@@ -35,3 +35,4 @@ source: "BigQuery `project1_day1.agents`"
 - `qa_score`, `agent_satisfaction`의 정확한 척도(만점 기준)는 BigQuery 컬럼 설명이 비어 있어 확인 불가. 값 범위로 미루어 짐작한 것이므로 정확한 정의는 추가 확인이 필요함 — 추측과 사실 구분.
 - [[i-003-저만족도-채널요인]]에서 "상담원별 채널 배정 비율을 통제하지 않았다"는 한계를 지적한 바 있는데, 이 테이블의 `qa_score`·`overtime_hours_avg`·`turnover_yn` 등을 활용하면 agent_id 가설을 더 정교하게 검증할 수 있어 보임 — 후속 분석 후보.
 - **2026-07-22 갱신**: `raw/data_agents.csv` 신규 추가됨 (이전엔 raw 파일 없이 BigQuery에서만 조회). 값 범위(qa_score 3.0~4.6, agent_satisfaction 2~9)는 기존과 동일하나 agent_id별 값 매핑이 달라짐 — 원본이 갱신된 것인지 값이 재배치된 것인지는 확인 안 됨, 추후 필요 시 재검증. BigQuery `hudson-bq-practice-2026.practice_dataset.data_agents`에도 이 파일로 재적재함 (`project1_day1.agents`와는 별개의 프로젝트).
+- **2026-07-23 재검증**: Streamlit 대시보드(`app.py`)를 `raw/data_agents.csv` 기반으로 구현하면서 팀별 eNPS·번아웃-CSAT 상관계수를 재계산한 결과, BigQuery 재적재 후 데이터 기준인 [[i-004-직원만족도-고객경험]] 수치(전체 eNPS -45.0, 1팀 -42.9, 2팀 -14.3, 3팀 -83.3)와 정확히 일치함을 확인함 — 이 raw 파일은 현재 BigQuery `data_agents`와 동기화된 상태로 보임(단, 위 재적재가 애초에 왜 일어났는지는 여전히 미확인).
