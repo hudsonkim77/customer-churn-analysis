@@ -43,7 +43,7 @@ fig = px.bar(
     x="bucket",
     y="churn_rate",
     color="bucket",
-    color_discrete_map={"0회": "#636EFA", "1회": "#636EFA", "2회 이상": "#D62728"},
+    color_discrete_map={"0회": "#3987e5", "1회": "#3987e5", "2회 이상": "#d03b3b"},
     custom_data=["n", "churned"],
     labels={"churn_rate": "이탈율 (%)", "bucket": "재문의 횟수"},
     title="재문의 횟수 구간별 이탈율",
@@ -58,11 +58,19 @@ fig.update_traces(
 fig.add_hline(
     y=overall_rate,
     line_dash="dash",
-    line_color="gray",
+    line_color="#898781",
     annotation_text=f"전체 평균 이탈율 {overall_rate}%",
     annotation_position="top left",
+    annotation_font_color="#c3c2b7",
 )
-fig.update_layout(showlegend=False)
+fig.update_layout(
+    showlegend=False,
+    paper_bgcolor="#1a1a19",
+    plot_bgcolor="#1a1a19",
+    font_color="#ffffff",
+    xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+    yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+)
 
 if __name__ == "__main__":
     print(summary.to_string(index=False))

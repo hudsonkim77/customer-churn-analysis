@@ -34,8 +34,8 @@ fig = px.bar(
     y="churn_rate",
     color="group",
     color_discrete_map={
-        "전체 고객": "#636EFA",
-        "해지관련 부정 VOC 이력 있음": "#D62728",
+        "전체 고객": "#3987e5",
+        "해지관련 부정 VOC 이력 있음": "#d03b3b",
     },
     custom_data=["n_customers", "n_churned"],
     labels={"churn_rate": "이탈율 (%)", "group": ""},
@@ -47,7 +47,14 @@ fig.update_traces(
         "이탈 고객 수: %{customdata[1]}명<br>이탈율: %{y}%<extra></extra>"
     )
 )
-fig.update_layout(showlegend=False)
+fig.update_layout(
+    showlegend=False,
+    paper_bgcolor="#1a1a19",
+    plot_bgcolor="#1a1a19",
+    font_color="#ffffff",
+    xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+    yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+)
 
 if __name__ == "__main__":
     print(df.to_string(index=False))

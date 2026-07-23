@@ -14,7 +14,7 @@ summary["churn_rate"] = round(100 * summary["churned"] / summary["n"], 1)
 summary = summary.sort_values("churn_rate", ascending=False)
 
 max_rate_plan = summary.iloc[0]["plan"]
-color_map = {p: ("#D62728" if p == max_rate_plan else "#636EFA") for p in summary["plan"]}
+color_map = {p: ("#d03b3b" if p == max_rate_plan else "#3987e5") for p in summary["plan"]}
 
 fig = px.bar(
     summary,
@@ -33,7 +33,14 @@ fig.update_traces(
         "이탈 고객 수: %{customdata[1]}명<br>이탈율: %{y}%<extra></extra>"
     )
 )
-fig.update_layout(showlegend=False)
+fig.update_layout(
+    showlegend=False,
+    paper_bgcolor="#1a1a19",
+    plot_bgcolor="#1a1a19",
+    font_color="#ffffff",
+    xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+    yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+)
 
 if __name__ == "__main__":
     print(summary.to_string(index=False))

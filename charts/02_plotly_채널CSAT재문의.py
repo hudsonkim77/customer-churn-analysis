@@ -29,6 +29,7 @@ fig.add_trace(
         y=result["avg_csat"],
         name="평균 CSAT",
         yaxis="y1",
+        marker_color="#3987e5",
         hovertemplate="채널: %{x}<br>평균 CSAT: %{y}<extra></extra>",
     )
 )
@@ -39,16 +40,26 @@ fig.add_trace(
         name="재문의율(%)",
         yaxis="y2",
         mode="lines+markers",
-        line=dict(color="#D62728"),
+        line=dict(color="#d03b3b"),
+        marker=dict(color="#d03b3b"),
         hovertemplate="채널: %{x}<br>재문의율: %{y}%<extra></extra>",
     )
 )
 fig.update_layout(
     title="채널별 CSAT 평균 및 재문의율 (CSAT 낮은 순)",
-    xaxis=dict(title="채널", categoryorder="array", categoryarray=result["channel"]),
-    yaxis=dict(title="평균 CSAT", side="left"),
-    yaxis2=dict(title="재문의율 (%)", side="right", overlaying="y"),
+    xaxis=dict(
+        title="채널",
+        categoryorder="array",
+        categoryarray=result["channel"],
+        gridcolor="#2c2c2a",
+        linecolor="#383835",
+    ),
+    yaxis=dict(title="평균 CSAT", side="left", gridcolor="#2c2c2a", linecolor="#383835"),
+    yaxis2=dict(title="재문의율 (%)", side="right", overlaying="y", gridcolor="#2c2c2a"),
     hovermode="x unified",
+    paper_bgcolor="#1a1a19",
+    plot_bgcolor="#1a1a19",
+    font_color="#ffffff",
 )
 
 if __name__ == "__main__":

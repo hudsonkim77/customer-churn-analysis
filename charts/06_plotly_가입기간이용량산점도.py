@@ -22,7 +22,7 @@ fig = px.scatter(
     x="tenure_months",
     y="avg_data_gb",
     color="churn_yn",
-    color_discrete_map={"Y": "#D62728", "N": "#636EFA"},
+    color_discrete_map={"Y": "#d03b3b", "N": "#3987e5"},
     custom_data=["customer_id", "tenure_months", "avg_data_gb", "churn_yn"],
     labels={
         "tenure_months": "가입기간 (개월)",
@@ -36,6 +36,13 @@ fig.update_traces(
         "고객ID: %{customdata[0]}<br>가입기간: %{customdata[1]}개월<br>"
         "평균 데이터 사용량: %{customdata[2]}GB<br>이탈 여부: %{customdata[3]}<extra></extra>"
     )
+)
+fig.update_layout(
+    paper_bgcolor="#1a1a19",
+    plot_bgcolor="#1a1a19",
+    font_color="#ffffff",
+    xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+    yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
 )
 
 if __name__ == "__main__":

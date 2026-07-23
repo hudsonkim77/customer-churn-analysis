@@ -48,8 +48,8 @@ def chart_voc_churn(customers, voc):
         y="churn_rate",
         color="group",
         color_discrete_map={
-            "전체 고객": "#636EFA",
-            "해지관련 부정 VOC 이력 있음": "#D62728",
+            "전체 고객": "#3987e5",
+            "해지관련 부정 VOC 이력 있음": "#d03b3b",
         },
         custom_data=["n_customers", "n_churned"],
         labels={"churn_rate": "이탈율 (%)", "group": ""},
@@ -60,7 +60,14 @@ def chart_voc_churn(customers, voc):
             "이탈 고객 수: %{customdata[1]}명<br>이탈율: %{y}%<extra></extra>"
         )
     )
-    fig.update_layout(showlegend=False)
+    fig.update_layout(
+        showlegend=False,
+        paper_bgcolor="#1a1a19",
+        plot_bgcolor="#1a1a19",
+        font_color="#ffffff",
+        xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+        yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+    )
     return fig
 
 
@@ -84,6 +91,7 @@ def chart_channel_csat_recontact(consultations, satisfaction):
             y=result["avg_csat"],
             name="평균 CSAT",
             yaxis="y1",
+            marker_color="#3987e5",
             hovertemplate="채널: %{x}<br>평균 CSAT: %{y}<extra></extra>",
         )
     )
@@ -94,15 +102,25 @@ def chart_channel_csat_recontact(consultations, satisfaction):
             name="재문의율(%)",
             yaxis="y2",
             mode="lines+markers",
-            line=dict(color="#D62728"),
+            line=dict(color="#d03b3b"),
+            marker=dict(color="#d03b3b"),
             hovertemplate="채널: %{x}<br>재문의율: %{y}%<extra></extra>",
         )
     )
     fig.update_layout(
-        xaxis=dict(title="채널", categoryorder="array", categoryarray=result["channel"]),
-        yaxis=dict(title="평균 CSAT", side="left"),
-        yaxis2=dict(title="재문의율 (%)", side="right", overlaying="y"),
+        xaxis=dict(
+            title="채널",
+            categoryorder="array",
+            categoryarray=result["channel"],
+            gridcolor="#2c2c2a",
+            linecolor="#383835",
+        ),
+        yaxis=dict(title="평균 CSAT", side="left", gridcolor="#2c2c2a", linecolor="#383835"),
+        yaxis2=dict(title="재문의율 (%)", side="right", overlaying="y", gridcolor="#2c2c2a"),
         hovermode="x unified",
+        paper_bgcolor="#1a1a19",
+        plot_bgcolor="#1a1a19",
+        font_color="#ffffff",
     )
     return fig
 
@@ -141,7 +159,7 @@ def chart_recontact_bucket_churn(consultations, customers):
         x="bucket",
         y="churn_rate",
         color="bucket",
-        color_discrete_map={"0회": "#636EFA", "1회": "#636EFA", "2회 이상": "#D62728"},
+        color_discrete_map={"0회": "#3987e5", "1회": "#3987e5", "2회 이상": "#d03b3b"},
         custom_data=["n", "churned"],
         labels={"churn_rate": "이탈율 (%)", "bucket": "재문의 횟수"},
         category_orders={"bucket": order},
@@ -155,11 +173,19 @@ def chart_recontact_bucket_churn(consultations, customers):
     fig.add_hline(
         y=overall_rate,
         line_dash="dash",
-        line_color="gray",
+        line_color="#898781",
         annotation_text=f"전체 평균 이탈율 {overall_rate}%",
         annotation_position="top left",
+        annotation_font_color="#c3c2b7",
     )
-    fig.update_layout(showlegend=False)
+    fig.update_layout(
+        showlegend=False,
+        paper_bgcolor="#1a1a19",
+        plot_bgcolor="#1a1a19",
+        font_color="#ffffff",
+        xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+        yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+    )
     return fig
 
 
@@ -172,7 +198,7 @@ def chart_plan_churn(customers):
     summary["churn_rate"] = round(100 * summary["churned"] / summary["n"], 1)
     summary = summary.sort_values("churn_rate", ascending=False)
     max_rate_plan = summary.iloc[0]["plan"]
-    color_map = {p: ("#D62728" if p == max_rate_plan else "#636EFA") for p in summary["plan"]}
+    color_map = {p: ("#d03b3b" if p == max_rate_plan else "#3987e5") for p in summary["plan"]}
 
     fig = px.bar(
         summary,
@@ -190,7 +216,14 @@ def chart_plan_churn(customers):
             "이탈 고객 수: %{customdata[1]}명<br>이탈율: %{y}%<extra></extra>"
         )
     )
-    fig.update_layout(showlegend=False)
+    fig.update_layout(
+        showlegend=False,
+        paper_bgcolor="#1a1a19",
+        plot_bgcolor="#1a1a19",
+        font_color="#ffffff",
+        xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+        yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+    )
     return fig
 
 
@@ -203,7 +236,7 @@ def chart_region_churn(customers):
     summary["churn_rate"] = round(100 * summary["churned"] / summary["n"], 1)
     summary = summary.sort_values("churn_rate", ascending=False)
     max_rate_region = summary.iloc[0]["region"]
-    color_map = {r: ("#D62728" if r == max_rate_region else "#636EFA") for r in summary["region"]}
+    color_map = {r: ("#d03b3b" if r == max_rate_region else "#3987e5") for r in summary["region"]}
 
     fig = px.bar(
         summary,
@@ -221,7 +254,14 @@ def chart_region_churn(customers):
             "이탈 고객 수: %{customdata[1]}명<br>이탈율: %{y}%<extra></extra>"
         )
     )
-    fig.update_layout(showlegend=False)
+    fig.update_layout(
+        showlegend=False,
+        paper_bgcolor="#1a1a19",
+        plot_bgcolor="#1a1a19",
+        font_color="#ffffff",
+        xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+        yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+    )
     return fig
 
 
@@ -241,7 +281,7 @@ def chart_tenure_usage_scatter(customers, usage):
         x="tenure_months",
         y="avg_data_gb",
         color="churn_yn",
-        color_discrete_map={"Y": "#D62728", "N": "#636EFA"},
+        color_discrete_map={"Y": "#d03b3b", "N": "#3987e5"},
         custom_data=["customer_id", "tenure_months", "avg_data_gb", "churn_yn"],
         labels={
             "tenure_months": "가입기간 (개월)",
@@ -254,6 +294,13 @@ def chart_tenure_usage_scatter(customers, usage):
             "고객ID: %{customdata[0]}<br>가입기간: %{customdata[1]}개월<br>"
             "평균 데이터 사용량: %{customdata[2]}GB<br>이탈 여부: %{customdata[3]}<extra></extra>"
         )
+    )
+    fig.update_layout(
+        paper_bgcolor="#1a1a19",
+        plot_bgcolor="#1a1a19",
+        font_color="#ffffff",
+        xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+        yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
     )
     return fig
 
