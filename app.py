@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from plotly.subplots import make_subplots
 
 RAW = Path(__file__).parent / "raw"
 
@@ -16,6 +17,7 @@ def load_data():
         "consultations": pd.read_csv(RAW / "data_consultations.csv", encoding="utf-8-sig"),
         "satisfaction": pd.read_csv(RAW / "data_satisfaction.csv", encoding="utf-8-sig"),
         "usage": pd.read_csv(RAW / "data_usage_history.csv", encoding="utf-8-sig"),
+        "agents": pd.read_csv(RAW / "data_agents.csv", encoding="utf-8-sig"),
     }
 
 
@@ -305,6 +307,168 @@ def chart_tenure_usage_scatter(customers, usage):
     return fig
 
 
+def chart_agent_enps(agents):
+    BLUE, RED, TEXT = "#3987e5", "#d03b3b", "#ffffff"
+
+    def classify(score):
+        if score >= 9:
+            return "promoter"
+        elif score >= 7:
+            return "passive"
+        return "detractor"
+
+    n = len(agents)
+    if n == 0:
+        enps = 0.0
+    else:
+        cls = agents["agent_satisfaction"].apply(classify)
+        enps = round(100 * (cls == "promoter").sum() / n - 100 * (cls == "detractor").sum() / n, 1)
+
+    color = RED if enps < 0 else BLUE
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=enps,
+            title={"text": "eNPS", "font": {"color": TEXT, "size": 20}},
+            number={"font": {"color": color, "size": 40}},
+            gauge={
+                "axis": {"range": [-100, 100], "tickcolor": TEXT},
+                "bar": {"color": color},
+                "steps": [
+                    {"range": [-100, 0], "color": "rgba(208, 59, 59, 0.25)"},
+                    {"range": [0, 100], "color": "rgba(57, 135, 229, 0.15)"},
+                ],
+                "threshold": {"line": {"color": TEXT, "width": 2}, "thickness": 0.8, "value": enps},
+            },
+        )
+    )
+    fig.update_layout(
+        paper_bgcolor="#1a1a19",
+        plot_bgcolor="#1a1a19",
+        font_color=TEXT,
+        height=320,
+    )
+    return fig
+
+
+def chart_agent_burnout_csat(agents, consultations, satisfaction):
+    BLUE, TEXT = "#3987e5", "#ffffff"
+
+    merged = satisfaction.merge(
+        consultations[["consult_id", "agent_id"]], on="consult_id", how="inner"
+    )
+    avg_csat = merged.groupby("agent_id")["csat"].mean().round(2).rename("avg_csat").reset_index()
+    df = agents.merge(avg_csat, on="agent_id", how="inner")
+
+    fig = px.scatter(
+        df,
+        x="overtime_hours_avg",
+        y="avg_csat",
+        trendline="ols" if len(df) >= 2 else None,
+        custom_data=["agent_id", "overtime_hours_avg", "avg_csat"],
+        labels={"overtime_hours_avg": "평균 초과근무 시간(월, 시간)", "avg_csat": "상담원별 CSAT 평균"},
+        color_discrete_sequence=[BLUE],
+    )
+    fig.update_traces(
+        hovertemplate=(
+            "agent_id: %{customdata[0]}<br>초과근무 시간: %{customdata[1]}시간<br>"
+            "CSAT 평균: %{customdata[2]}<extra></extra>"
+        ),
+        selector=dict(mode="markers"),
+    )
+    if len(df) >= 2 and df["overtime_hours_avg"].std() > 0:
+        r = round(df["overtime_hours_avg"].corr(df["avg_csat"]), 2)
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.98,
+            text=f"r = {r}",
+            showarrow=False,
+            font=dict(size=16, color=TEXT),
+            bgcolor="rgba(255,255,255,0.08)",
+            bordercolor=TEXT,
+            borderwidth=1,
+        )
+    fig.update_layout(
+        paper_bgcolor="#1a1a19",
+        plot_bgcolor="#1a1a19",
+        font_color=TEXT,
+        height=320,
+        xaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+        yaxis=dict(gridcolor="#2c2c2a", linecolor="#383835"),
+    )
+    return fig
+
+
+def chart_agent_training_comparison(agents, consultations, satisfaction):
+    BLUE, GRAY, TEXT = "#3987e5", "#898781", "#ffffff"
+
+    merged = satisfaction.merge(
+        consultations[["consult_id", "agent_id", "is_recontact"]], on="consult_id", how="inner"
+    )
+    avg_csat = merged.groupby("agent_id")["csat"].mean().rename("avg_csat")
+    recontact_rate = (
+        consultations.groupby("agent_id")["is_recontact"]
+        .apply(lambda s: round(100 * (s == "Y").mean(), 2))
+        .rename("recontact_rate")
+    )
+    df = agents.merge(avg_csat, on="agent_id").merge(recontact_rate, on="agent_id")
+
+    csat_by_group = df.groupby("training_completed_yn")["avg_csat"].mean().round(3)
+    recontact_by_group = df.groupby("training_completed_yn")["recontact_rate"].mean().round(2)
+
+    labels = ["N (미이수)", "Y (교육이수)"]
+    colors = [GRAY, BLUE]
+    csat_values = [
+        round(csat_by_group.get("N", float("nan")), 3),
+        round(csat_by_group.get("Y", float("nan")), 3),
+    ]
+    recontact_values = [
+        round(recontact_by_group.get("N", float("nan")), 2),
+        round(recontact_by_group.get("Y", float("nan")), 2),
+    ]
+
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("CSAT 평균", "재문의율 평균 (%)"))
+    fig.add_trace(
+        go.Bar(
+            x=labels,
+            y=csat_values,
+            marker_color=colors,
+            text=csat_values,
+            texttemplate="%{text}",
+            textposition="outside",
+            hovertemplate="%{x}<br>CSAT 평균: %{y}<extra></extra>",
+            showlegend=False,
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Bar(
+            x=labels,
+            y=recontact_values,
+            marker_color=colors,
+            text=[f"{v}%" for v in recontact_values],
+            texttemplate="%{text}",
+            textposition="outside",
+            hovertemplate="%{x}<br>재문의율: %{y}%<extra></extra>",
+            showlegend=False,
+        ),
+        row=1,
+        col=2,
+    )
+    fig.update_layout(
+        paper_bgcolor="#1a1a19",
+        plot_bgcolor="#1a1a19",
+        font_color=TEXT,
+        height=320,
+    )
+    fig.update_xaxes(gridcolor="#2c2c2a", linecolor="#383835")
+    fig.update_yaxes(gridcolor="#2c2c2a", linecolor="#383835")
+    return fig
+
+
 st.set_page_config(page_title="고객은 왜 이탈하는가", layout="wide")
 st.title("고객은 왜 이탈하는가 — 이탈 원인 진단 대시보드")
 
@@ -344,4 +508,24 @@ st.plotly_chart(chart_region_churn(data["customers"]), use_container_width=True)
 st.subheader("⑥ 가입기간·이용량으로 본 이탈")
 st.plotly_chart(
     chart_tenure_usage_scatter(data["customers"], data["usage"]), use_container_width=True
+)
+
+st.subheader("상담원 관점: 직원만족도와 고객 경험")
+teams = sorted(data["agents"]["team"].unique())
+selected_team = st.selectbox("팀 선택", ["전체"] + teams)
+if selected_team == "전체":
+    filtered_agents = data["agents"]
+else:
+    filtered_agents = data["agents"][data["agents"]["team"] == selected_team]
+
+st.caption(f"선택된 팀 상담원 수: {len(filtered_agents)}명 (표본 30명 미만 — 참고용)")
+col_enps, col_burnout, col_training = st.columns(3)
+col_enps.plotly_chart(chart_agent_enps(filtered_agents), use_container_width=True)
+col_burnout.plotly_chart(
+    chart_agent_burnout_csat(filtered_agents, data["consultations"], data["satisfaction"]),
+    use_container_width=True,
+)
+col_training.plotly_chart(
+    chart_agent_training_comparison(filtered_agents, data["consultations"], data["satisfaction"]),
+    use_container_width=True,
 )
