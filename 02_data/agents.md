@@ -3,7 +3,7 @@ date: 2026-07-21
 category: 스키마
 data: agents
 tags: [상담원, 상담품질]
-source: "BigQuery `project1_day1.agents`"
+source: "[[raw/data_agents.csv]] (원래 BigQuery `project1_day1.agents`에서만 조회했으나 2026-07-22 raw 파일 추가, 2026-07-23 BigQuery 재적재분과 값 일치 재검증)"
 ---
 
 ## 개요
