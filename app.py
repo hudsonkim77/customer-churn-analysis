@@ -2,11 +2,14 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+import fitz  # PyMuPDF
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
+
+from report_pdf import build_report_pdf
 
 RAW = Path(__file__).parent / "raw"
 DATA_DIR = Path(__file__).parent / "data"
@@ -674,6 +677,19 @@ with tab_dashboard:
         use_container_width=True,
     )
 
+@st.cache_data
+def _cached_report_pdf(text):
+    return build_report_pdf(text)
+
+
+@st.cache_data
+def _cached_pdf_page_images(pdf_bytes):
+    """PDF 각 페이지를 PNG로 렌더링한다. 브라우저 PDF 플러그인/외부 스크립트에
+    의존하지 않고 st.image로 그대로 화면에 띄우기 위함."""
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    return [page.get_pixmap(dpi=150).tobytes("png") for page in doc]
+
+
 with tab_report:
     report_path = Path(__file__).parent / "report" / "고객서비스_만족도개선_리포트.md"
     report_text = report_path.read_text(encoding="utf-8-sig")
@@ -681,4 +697,25 @@ with tab_report:
         end = report_text.find("---", 3)
         if end != -1:
             report_text = report_text[end + 3 :].lstrip("\n")
+
+    col_spacer, col_pdf_btn = st.columns([5, 1.4])
+    with col_pdf_btn:
+        show_pdf = st.button("📄 PDF로 보기", use_container_width=True)
+
+    if show_pdf:
+        with st.spinner("공문서 형식 PDF 생성 중..."):
+            pdf_bytes = _cached_report_pdf(report_text)
+            page_images = _cached_pdf_page_images(pdf_bytes)
+        st.download_button(
+            "⬇️ PDF 다운로드",
+            data=pdf_bytes,
+            file_name="고객서비스_만족도개선_리포트.pdf",
+            mime="application/pdf",
+        )
+        # 브라우저 내장 PDF 플러그인은 Streamlit components.html의 sandbox 제약(iframe
+        # 플러그인 차단, 외부 CDN 스크립트 ORB 차단) 때문에 화면에 못 띄운다. 그래서 각
+        # 페이지를 서버에서 이미지로 렌더링해 st.image로 보여준다 — 어떤 브라우저에서도 그대로 동작한다.
+        for page_png in page_images:
+            st.image(page_png, use_container_width=True)
+
     st.markdown(render_report_with_toc(report_text), unsafe_allow_html=True)
