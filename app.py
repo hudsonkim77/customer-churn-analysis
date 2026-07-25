@@ -1,12 +1,18 @@
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from google.cloud import bigquery
+from google.oauth2 import service_account
 from plotly.subplots import make_subplots
 
 RAW = Path(__file__).parent / "raw"
+DATA_DIR = Path(__file__).parent / "data"
+PROJECT_ID = "hudson-bq-practice-2026"
+DATASET = f"{PROJECT_ID}.practice_dataset"
 
 
 @st.cache_data
@@ -17,8 +23,52 @@ def load_data():
         "consultations": pd.read_csv(RAW / "data_consultations.csv", encoding="utf-8-sig"),
         "satisfaction": pd.read_csv(RAW / "data_satisfaction.csv", encoding="utf-8-sig"),
         "usage": pd.read_csv(RAW / "data_usage_history.csv", encoding="utf-8-sig"),
-        "agents": pd.read_csv(RAW / "data_agents.csv", encoding="utf-8-sig"),
     }
+
+
+def get_bigquery_client():
+    """배포 환경에서는 Streamlit Secrets의 서비스 계정을 먼저 찾아본다.
+    st.secrets 자체가 없는 로컬 환경에서는 예외를 무시하고 기존처럼 ADC로 인증한다."""
+    try:
+        info = dict(st.secrets["gcp_service_account"])
+        credentials = service_account.Credentials.from_service_account_info(info)
+        return bigquery.Client(credentials=credentials, project=info.get("project_id", PROJECT_ID))
+    except Exception:
+        return bigquery.Client(project=PROJECT_ID)
+
+
+def _to_yn(series):
+    """BigQuery boolean(True/False)과 스냅샷 CSV의 Y/N 문자열을 하나로 통일한다."""
+    return series.map({True: "Y", False: "N", "True": "Y", "False": "N"}).fillna(series)
+
+
+@st.cache_data(ttl=600)
+def load_agent_data():
+    """상담원 관점 섹션 데이터: BigQuery 라이브 조회를 먼저 시도하고,
+    인증 실패든 네트워크 문제든 어떤 이유로든 실패하면 로컬 스냅샷 CSV로 대체한다."""
+    try:
+        client = get_bigquery_client()
+        agents = client.query(
+            f"SELECT agent_id, team, agent_satisfaction, overtime_hours_avg, training_completed_yn "
+            f"FROM `{DATASET}.data_agents`"
+        ).result().to_dataframe()
+        agent_consultations = client.query(
+            f"SELECT c.consult_id, c.agent_id, c.is_recontact, s.csat "
+            f"FROM `{DATASET}.data_consultations` c "
+            f"JOIN `{DATASET}.data_satisfaction` s USING(consult_id)"
+        ).result().to_dataframe()
+        agents["training_completed_yn"] = _to_yn(agents["training_completed_yn"])
+        agent_consultations["is_recontact"] = _to_yn(agent_consultations["is_recontact"])
+        return agents, agent_consultations, "live", None
+    except Exception:
+        agents = pd.read_csv(DATA_DIR / "agents_snapshot.csv", encoding="utf-8-sig")
+        agent_consultations = pd.read_csv(
+            DATA_DIR / "agent_consultations_snapshot.csv", encoding="utf-8-sig"
+        )
+        snapshot_date = datetime.fromtimestamp(
+            (DATA_DIR / "agents_snapshot.csv").stat().st_mtime
+        ).strftime("%m월 %d일")
+        return agents, agent_consultations, "snapshot", snapshot_date
 
 
 def chart_voc_churn(customers, voc):
@@ -351,13 +401,16 @@ def chart_agent_enps(agents):
     return fig
 
 
-def chart_agent_burnout_csat(agents, consultations, satisfaction):
+def chart_agent_burnout_csat(agents, agent_consultations):
     BLUE, TEXT = "#3987e5", "#ffffff"
 
-    merged = satisfaction.merge(
-        consultations[["consult_id", "agent_id"]], on="consult_id", how="inner"
+    avg_csat = (
+        agent_consultations.groupby("agent_id")["csat"]
+        .mean()
+        .round(2)
+        .rename("avg_csat")
+        .reset_index()
     )
-    avg_csat = merged.groupby("agent_id")["csat"].mean().round(2).rename("avg_csat").reset_index()
     df = agents.merge(avg_csat, on="agent_id", how="inner")
 
     fig = px.scatter(
@@ -401,15 +454,12 @@ def chart_agent_burnout_csat(agents, consultations, satisfaction):
     return fig
 
 
-def chart_agent_training_comparison(agents, consultations, satisfaction):
+def chart_agent_training_comparison(agents, agent_consultations):
     BLUE, GRAY, TEXT = "#3987e5", "#898781", "#ffffff"
 
-    merged = satisfaction.merge(
-        consultations[["consult_id", "agent_id", "is_recontact"]], on="consult_id", how="inner"
-    )
-    avg_csat = merged.groupby("agent_id")["csat"].mean().rename("avg_csat")
+    avg_csat = agent_consultations.groupby("agent_id")["csat"].mean().rename("avg_csat")
     recontact_rate = (
-        consultations.groupby("agent_id")["is_recontact"]
+        agent_consultations.groupby("agent_id")["is_recontact"]
         .apply(lambda s: round(100 * (s == "Y").mean(), 2))
         .rename("recontact_rate")
     )
@@ -515,12 +565,21 @@ with tab_dashboard:
     )
 
     st.subheader("상담원 관점: 직원만족도와 고객 경험")
-    teams = sorted(data["agents"]["team"].unique())
+    agents_df, agent_consultations_df, agent_data_source, snapshot_date = load_agent_data()
+    if agent_data_source == "live":
+        st.caption("🟢 BigQuery 라이브 데이터")
+    else:
+        st.caption(
+            f"🟡 로컬 스냅샷 데이터({snapshot_date} 기준) — 배포 환경에 BigQuery 인증 정보가 없어 "
+            "그 시점 데이터로 대체 표시 중입니다"
+        )
+
+    teams = sorted(agents_df["team"].unique())
     selected_team = st.selectbox("팀 선택", ["전체"] + teams)
     if selected_team == "전체":
-        filtered_agents = data["agents"]
+        filtered_agents = agents_df
     else:
-        filtered_agents = data["agents"][data["agents"]["team"] == selected_team]
+        filtered_agents = agents_df[agents_df["team"] == selected_team]
 
     st.caption(f"선택된 팀 상담원 수: {len(filtered_agents)}명 (표본 30명 미만 — 참고용)")
 
@@ -528,11 +587,11 @@ with tab_dashboard:
 
     col_burnout, col_training = st.columns(2)
     col_burnout.plotly_chart(
-        chart_agent_burnout_csat(filtered_agents, data["consultations"], data["satisfaction"]),
+        chart_agent_burnout_csat(filtered_agents, agent_consultations_df),
         use_container_width=True,
     )
     col_training.plotly_chart(
-        chart_agent_training_comparison(filtered_agents, data["consultations"], data["satisfaction"]),
+        chart_agent_training_comparison(filtered_agents, agent_consultations_df),
         use_container_width=True,
     )
 
