@@ -242,9 +242,12 @@ if __name__ == "__main__":
     # 앱 실행 중에 쓴 파일은 반영하지 않는다(직접 검증함). 그래서 PDF를 매 클릭마다
     # 새로 만들어 static/에 쓰는 대신, 이 스크립트로 미리 만들어 저장소에 커밋해두고
     # st.link_button이 그 고정된 경로를 새 탭으로 여는 방식으로 바꿨다.
+    # 파일명은 반드시 영문(ASCII)이어야 한다 — 한글 파일명(고객서비스_...pdf)으로
+    # 커밋했을 때는 Streamlit Cloud의 정적 서빙 레이어에서 URL 인코딩이 안 맞아
+    # 계속 404가 났다(로컬에서는 정상 동작해서 처음엔 못 잡았음).
     # 리포트(report/고객서비스_만족도개선_리포트.md)가 바뀔 때마다 다시 실행하고 커밋할 것.
     out_dir = Path(__file__).parent / "static"
     out_dir.mkdir(exist_ok=True)
-    out_path = out_dir / "고객서비스_만족도개선_리포트.pdf"
+    out_path = out_dir / "report.pdf"
     out_path.write_bytes(build_report_pdf(_load_report_body()))
     print(f"저장 완료: {out_path} ({out_path.stat().st_size:,} bytes)")

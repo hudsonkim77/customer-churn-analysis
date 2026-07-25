@@ -676,7 +676,9 @@ with tab_dashboard:
         use_container_width=True,
     )
 
-STATIC_REPORT_PDF = Path(__file__).parent / "static" / "고객서비스_만족도개선_리포트.pdf"
+# 파일명은 영문(ASCII)이어야 한다 — 한글 파일명은 Streamlit Cloud의 정적 서빙
+# 레이어에서 URL 인코딩이 안 맞아 404가 났다(직접 검증함, report_pdf.py 참고).
+STATIC_REPORT_PDF = Path(__file__).parent / "static" / "report.pdf"
 
 
 with tab_report:
@@ -709,7 +711,7 @@ with tab_report:
         with col_open:
             st.link_button(
                 "🔗 새 창에서 PDF 열기 (인쇄/다운로드)",
-                "app/static/고객서비스_만족도개선_리포트.pdf",
+                "app/static/report.pdf",
                 use_container_width=True,
             )
         with col_download:
