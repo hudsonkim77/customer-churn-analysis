@@ -523,14 +523,38 @@ def chart_agent_training_comparison(agents, agent_consultations):
 REPORT_SECTION_RE = re.compile(r"^## (\d+)\.\s+(.+)$", re.MULTILINE)
 
 
+# 섹션 번호대별 네온 그룹 색상 (다크모드 전용): 1-3 그린 / 4-6 핑크 / 7-8 시안
+REPORT_SECTION_GROUPS = {"a": "#3bffa0", "b": "#ff4fd8", "c": "#33e0ff"}
+
+
+def _section_group(num):
+    n = int(num)
+    if n <= 3:
+        return "a"
+    if n <= 6:
+        return "b"
+    return "c"
+
+
 def render_report_with_toc(report_text):
     """리포트의 '## N. 제목' 대제목 8개를 목차로 뽑아 상단에 배치하고,
-    각 대제목 우측에 '목차 바로가기' 링크를 붙인 HTML+마크다운 혼합 문자열을 만든다."""
+    각 대제목 우측에 '목차 바로가기' 링크를 붙인 HTML+마크다운 혼합 문자열을 만든다.
+    섹션 번호대(1-3/4-6/7-8)별로 네온 그린·핑크·시안 3색을 구분해 입힌다."""
     sections = REPORT_SECTION_RE.findall(report_text)
 
     toc_items = "\n".join(
-        f'    <li><a href="#report-sec-{num}">{num}. {title.strip()}</a></li>'
+        f'    <li><a href="#report-sec-{num}" class="group-{_section_group(num)}">{num}. {title.strip()}</a></li>'
         for num, title in sections
+    )
+
+    color_rules = "\n".join(
+        f"""
+.report-toc a.group-{g} {{ color: {c}; }}
+.report-heading-row.group-{g} {{ border-bottom: 2px solid {c}; box-shadow: 0 1px 8px -2px {c}; }}
+.report-heading-row.group-{g} h2 {{ color: {c}; text-shadow: 0 0 10px {c}66; }}
+.report-back-to-toc.group-{g}:hover {{ color: {c}; text-shadow: 0 0 6px {c}88; }}
+""".strip("\n")
+        for g, c in REPORT_SECTION_GROUPS.items()
     )
 
     style_and_toc = f"""
@@ -554,7 +578,6 @@ def render_report_with_toc(report_text):
     line-height: 2;
 }}
 .report-toc a {{
-    color: #3987e5;
     text-decoration: none;
 }}
 .report-toc a:hover {{
@@ -564,7 +587,6 @@ def render_report_with_toc(report_text):
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    border-bottom: 2px solid #3987e5;
     padding-bottom: 0.4rem;
     margin-top: 2.2rem;
     margin-bottom: 0.9rem;
@@ -573,7 +595,6 @@ def render_report_with_toc(report_text):
     margin: 0;
     padding: 0;
     border: none;
-    color: #ffffff;
 }}
 .report-back-to-toc {{
     font-size: 0.82rem;
@@ -583,9 +604,9 @@ def render_report_with_toc(report_text):
     margin-left: 1rem;
 }}
 .report-back-to-toc:hover {{
-    color: #3987e5;
     text-decoration: underline;
 }}
+{color_rules}
 </style>
 <div class="report-toc" id="report-toc">
   <div class="report-toc-title">📑 목차</div>
@@ -598,10 +619,11 @@ def render_report_with_toc(report_text):
 
     def replace_heading(match):
         num, title = match.group(1), match.group(2).strip()
+        grp = _section_group(num)
         return (
-            f'<div class="report-heading-row" id="report-sec-{num}">'
+            f'<div class="report-heading-row group-{grp}" id="report-sec-{num}">'
             f"<h2>{num}. {title}</h2>"
-            f'<a class="report-back-to-toc" href="#report-toc">목차 바로가기 ↑</a>'
+            f'<a class="report-back-to-toc group-{grp}" href="#report-toc">목차 바로가기 ↑</a>'
             f"</div>"
         )
 
