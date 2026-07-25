@@ -6,14 +6,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from google.cloud import bigquery
-from google.oauth2 import service_account
 from plotly.subplots import make_subplots
 
 RAW = Path(__file__).parent / "raw"
 DATA_DIR = Path(__file__).parent / "data"
-PROJECT_ID = "hudson-bq-practice-2026"
-DATASET = f"{PROJECT_ID}.practice_dataset"
 REACT_DASHBOARD_URL = "https://customer-churn-dashboard-web-jpfl.vercel.app"
 
 
@@ -28,49 +24,18 @@ def load_data():
     }
 
 
-def get_bigquery_client():
-    """배포 환경에서는 Streamlit Secrets의 서비스 계정을 먼저 찾아본다.
-    st.secrets 자체가 없는 로컬 환경에서는 예외를 무시하고 기존처럼 ADC로 인증한다."""
-    try:
-        info = dict(st.secrets["gcp_service_account"])
-        credentials = service_account.Credentials.from_service_account_info(info)
-        return bigquery.Client(credentials=credentials, project=info.get("project_id", PROJECT_ID))
-    except Exception:
-        return bigquery.Client(project=PROJECT_ID)
-
-
-def _to_yn(series):
-    """BigQuery boolean(True/False)과 스냅샷 CSV의 Y/N 문자열을 하나로 통일한다."""
-    return series.map({True: "Y", False: "N", "True": "Y", "False": "N"}).fillna(series)
-
-
-@st.cache_data(ttl=600)
+@st.cache_data
 def load_agent_data():
-    """상담원 관점 섹션 데이터: BigQuery 라이브 조회를 먼저 시도하고,
-    인증 실패든 네트워크 문제든 어떤 이유로든 실패하면 로컬 스냅샷 CSV로 대체한다."""
-    try:
-        client = get_bigquery_client()
-        agents = client.query(
-            f"SELECT agent_id, team, agent_satisfaction, overtime_hours_avg, training_completed_yn "
-            f"FROM `{DATASET}.data_agents`"
-        ).result().to_dataframe()
-        agent_consultations = client.query(
-            f"SELECT c.consult_id, c.agent_id, c.is_recontact, s.csat "
-            f"FROM `{DATASET}.data_consultations` c "
-            f"JOIN `{DATASET}.data_satisfaction` s USING(consult_id)"
-        ).result().to_dataframe()
-        agents["training_completed_yn"] = _to_yn(agents["training_completed_yn"])
-        agent_consultations["is_recontact"] = _to_yn(agent_consultations["is_recontact"])
-        return agents, agent_consultations, "live", None
-    except Exception:
-        agents = pd.read_csv(DATA_DIR / "agents_snapshot.csv", encoding="utf-8-sig")
-        agent_consultations = pd.read_csv(
-            DATA_DIR / "agent_consultations_snapshot.csv", encoding="utf-8-sig"
-        )
-        snapshot_date = datetime.fromtimestamp(
-            (DATA_DIR / "agents_snapshot.csv").stat().st_mtime
-        ).strftime("%m월 %d일")
-        return agents, agent_consultations, "snapshot", snapshot_date
+    """상담원 관점 섹션 데이터: 로딩 속도를 위해 BigQuery 라이브 조회 없이
+    항상 로컬 스냅샷 CSV만 사용한다 (배포 환경 콜드 스타트 지연 원인이었음, DEPLOY.md 참고)."""
+    agents = pd.read_csv(DATA_DIR / "agents_snapshot.csv", encoding="utf-8-sig")
+    agent_consultations = pd.read_csv(
+        DATA_DIR / "agent_consultations_snapshot.csv", encoding="utf-8-sig"
+    )
+    snapshot_date = datetime.fromtimestamp(
+        (DATA_DIR / "agents_snapshot.csv").stat().st_mtime
+    ).strftime("%m월 %d일")
+    return agents, agent_consultations, snapshot_date
 
 
 def chart_voc_churn(customers, voc):
@@ -566,6 +531,7 @@ def render_report_with_toc(report_text):
     border-radius: 10px;
     padding: 1.1rem 1.5rem;
     margin-bottom: 1.8rem;
+    scroll-margin-top: 4.5rem;
 }}
 .report-toc-title {{
     font-weight: 700;
@@ -591,6 +557,7 @@ def render_report_with_toc(report_text):
     padding-bottom: 0.4rem;
     margin-top: 2.2rem;
     margin-bottom: 0.9rem;
+    scroll-margin-top: 4.5rem;
 }}
 .report-heading-row h2 {{
     margin: 0;
@@ -683,14 +650,8 @@ with tab_dashboard:
     )
 
     st.subheader("상담원 관점: 직원만족도와 고객 경험")
-    agents_df, agent_consultations_df, agent_data_source, snapshot_date = load_agent_data()
-    if agent_data_source == "live":
-        st.caption("🟢 BigQuery 라이브 데이터")
-    else:
-        st.caption(
-            f"🟡 로컬 스냅샷 데이터({snapshot_date} 기준) — 배포 환경에 BigQuery 인증 정보가 없어 "
-            "그 시점 데이터로 대체 표시 중입니다"
-        )
+    agents_df, agent_consultations_df, snapshot_date = load_agent_data()
+    st.caption(f"🟡 스냅샷 데이터({snapshot_date} 기준) — 로딩 속도를 위해 항상 스냅샷을 사용합니다")
 
     teams = sorted(agents_df["team"].unique())
     selected_team = st.selectbox("팀 선택", ["전체"] + teams)
