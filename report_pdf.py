@@ -225,3 +225,26 @@ def build_report_pdf(report_body_markdown, title="고객서비스 만족도개�
     if result.err:
         raise RuntimeError(f"PDF 생성 실패 (xhtml2pdf error code={result.err})")
     return buffer.getvalue()
+
+
+def _load_report_body():
+    report_path = Path(__file__).parent / "report" / "고객서비스_만족도개선_리포트.md"
+    text = report_path.read_text(encoding="utf-8-sig")
+    if text.startswith("---"):
+        end = text.find("---", 3)
+        if end != -1:
+            text = text[end + 3 :].lstrip("\n")
+    return text
+
+
+if __name__ == "__main__":
+    # Streamlit Cloud의 정적 파일 서빙은 배포 시점에 이미 저장소에 있던 파일만 서빙하고
+    # 앱 실행 중에 쓴 파일은 반영하지 않는다(직접 검증함). 그래서 PDF를 매 클릭마다
+    # 새로 만들어 static/에 쓰는 대신, 이 스크립트로 미리 만들어 저장소에 커밋해두고
+    # st.link_button이 그 고정된 경로를 새 탭으로 여는 방식으로 바꿨다.
+    # 리포트(report/고객서비스_만족도개선_리포트.md)가 바뀔 때마다 다시 실행하고 커밋할 것.
+    out_dir = Path(__file__).parent / "static"
+    out_dir.mkdir(exist_ok=True)
+    out_path = out_dir / "고객서비스_만족도개선_리포트.pdf"
+    out_path.write_bytes(build_report_pdf(_load_report_body()))
+    print(f"저장 완료: {out_path} ({out_path.stat().st_size:,} bytes)")

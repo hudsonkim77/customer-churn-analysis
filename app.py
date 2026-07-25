@@ -676,9 +676,7 @@ with tab_dashboard:
         use_container_width=True,
     )
 
-@st.cache_data
-def _cached_report_pdf(text):
-    return build_report_pdf(text)
+STATIC_REPORT_PDF = Path(__file__).parent / "static" / "고객서비스_만족도개선_리포트.pdf"
 
 
 with tab_report:
@@ -694,26 +692,21 @@ with tab_report:
         show_pdf = st.button("📄 PDF로 보기", use_container_width=True)
 
     if show_pdf:
-        with st.spinner("공문서 형식 PDF 생성 중..."):
-            pdf_bytes = _cached_report_pdf(report_text)
-
-        # data:/blob: URL로 새 창을 열려는 시도는 크롬 보안 정책과 Streamlit의
-        # sandbox 처리된 iframe(components.html) 때문에 계속 막혔다. 대신 PDF를
-        # Streamlit의 정적 파일 서빙 경로(static/)에 실제로 써두고, 그 안정적인
-        # URL을 st.link_button(기본이 새 탭 열기)으로 연결한다 — 진짜 HTTP 이동이라
-        # 브라우저 내장 PDF 뷰어의 인쇄·다운로드 기능을 아무 제약 없이 쓸 수 있다.
-        static_dir = Path(__file__).parent / "static"
-        static_dir.mkdir(exist_ok=True)
-        (static_dir / "고객서비스_만족도개선_리포트.pdf").write_bytes(pdf_bytes)
+        # Streamlit Cloud의 정적 파일 서빙은 배포 시점에 저장소에 이미 있던 파일만
+        # 서빙하고 앱 실행 중에 쓴 파일은 반영하지 않는다(직접 검증함). 그래서 매
+        # 클릭마다 새로 만들지 않고, report_pdf.py를 미리 실행해 커밋해둔 static/의
+        # 고정 파일을 쓴다 — st.link_button은 그 자체로 새 탭을 여니 여기엔 커스텀
+        # JS가 필요 없다(커스텀 JS는 항상 sandbox iframe에서만 실행되고, 그 안에서
+        # 만든 Blob은 새 탭으로 못 넘어간다는 것도 별도로 검증했음).
+        if STATIC_REPORT_PDF.exists():
+            pdf_bytes = STATIC_REPORT_PDF.read_bytes()
+        else:
+            # 로컬에서 아직 `python report_pdf.py`를 실행해보지 않았을 때의 대비책.
+            with st.spinner("공문서 형식 PDF 생성 중..."):
+                pdf_bytes = build_report_pdf(report_text)
 
         col_open, col_download = st.columns(2)
         with col_open:
-            # 반드시 "/" 없는 상대경로여야 한다. Streamlit Community Cloud에서는
-            # 도메인 루트(streamlit.app/)가 우리 앱이 아니라 Streamlit Cloud 자체의
-            # 포털 셸이 차지하고 있고, 실제 앱 서버는 "/~/+/" 하위 경로에 떠 있다.
-            # "/"로 시작하는 절대경로는 도메인 루트(=포털 셸)로 잘못 풀려 file not
-            # found가 났다 — "/" 없이 상대경로로 두면 현재 앱이 떠 있는 그 하위 경로
-            # 기준으로 정확히 풀린다(로컬 개발 서버는 루트가 곧 "/"라 어느 쪽이든 동작함).
             st.link_button(
                 "🔗 새 창에서 PDF 열기 (인쇄/다운로드)",
                 "app/static/고객서비스_만족도개선_리포트.pdf",
