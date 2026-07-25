@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -519,6 +520,95 @@ def chart_agent_training_comparison(agents, agent_consultations):
     return fig
 
 
+REPORT_SECTION_RE = re.compile(r"^## (\d+)\.\s+(.+)$", re.MULTILINE)
+
+
+def render_report_with_toc(report_text):
+    """리포트의 '## N. 제목' 대제목 8개를 목차로 뽑아 상단에 배치하고,
+    각 대제목 우측에 '목차 바로가기' 링크를 붙인 HTML+마크다운 혼합 문자열을 만든다."""
+    sections = REPORT_SECTION_RE.findall(report_text)
+
+    toc_items = "\n".join(
+        f'    <li><a href="#report-sec-{num}">{num}. {title.strip()}</a></li>'
+        for num, title in sections
+    )
+
+    style_and_toc = f"""
+<style>
+.report-toc {{
+    background: #1a1a19;
+    border: 1px solid #383835;
+    border-radius: 10px;
+    padding: 1.1rem 1.5rem;
+    margin-bottom: 1.8rem;
+}}
+.report-toc-title {{
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+}}
+.report-toc ol {{
+    margin: 0;
+    padding-left: 1.3rem;
+    line-height: 2;
+}}
+.report-toc a {{
+    color: #3987e5;
+    text-decoration: none;
+}}
+.report-toc a:hover {{
+    text-decoration: underline;
+}}
+.report-heading-row {{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 2px solid #3987e5;
+    padding-bottom: 0.4rem;
+    margin-top: 2.2rem;
+    margin-bottom: 0.9rem;
+}}
+.report-heading-row h2 {{
+    margin: 0;
+    padding: 0;
+    border: none;
+    color: #ffffff;
+}}
+.report-back-to-toc {{
+    font-size: 0.82rem;
+    color: #898781;
+    text-decoration: none;
+    white-space: nowrap;
+    margin-left: 1rem;
+}}
+.report-back-to-toc:hover {{
+    color: #3987e5;
+    text-decoration: underline;
+}}
+</style>
+<div class="report-toc" id="report-toc">
+  <div class="report-toc-title">📑 목차</div>
+  <ol>
+{toc_items}
+  </ol>
+</div>
+
+"""
+
+    def replace_heading(match):
+        num, title = match.group(1), match.group(2).strip()
+        return (
+            f'<div class="report-heading-row" id="report-sec-{num}">'
+            f"<h2>{num}. {title}</h2>"
+            f'<a class="report-back-to-toc" href="#report-toc">목차 바로가기 ↑</a>'
+            f"</div>"
+        )
+
+    body = REPORT_SECTION_RE.sub(replace_heading, report_text)
+    return style_and_toc + body
+
+
 st.set_page_config(page_title="고객은 왜 이탈하는가", layout="wide")
 st.title("고객은 왜 이탈하는가 — 이탈 원인 진단 대시보드")
 
@@ -602,4 +692,4 @@ with tab_report:
         end = report_text.find("---", 3)
         if end != -1:
             report_text = report_text[end + 3 :].lstrip("\n")
-    st.markdown(report_text)
+    st.markdown(render_report_with_toc(report_text), unsafe_allow_html=True)
