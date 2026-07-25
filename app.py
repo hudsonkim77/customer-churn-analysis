@@ -473,59 +473,74 @@ st.set_page_config(page_title="고객은 왜 이탈하는가", layout="wide")
 st.title("고객은 왜 이탈하는가 — 이탈 원인 진단 대시보드")
 
 data = load_data()
-customers = data["customers"]
 
-total_n = len(customers)
-churned_n = int((customers["churn_yn"] == "Y").sum())
-churn_rate = round(100 * churned_n / total_n, 1)
+tab_dashboard, tab_report = st.tabs(["대시보드", "개선 제안 리포트"])
 
-col1, col2, col3 = st.columns(3)
-col1.metric("전체 고객 수", f"{total_n}명")
-col2.metric("이탈 고객 수", f"{churned_n}명")
-col3.metric("전체 이탈율", f"{churn_rate}%")
+with tab_dashboard:
+    customers = data["customers"]
 
-st.subheader("① VOC로 본 이탈")
-st.plotly_chart(chart_voc_churn(data["customers"], data["voc"]), use_container_width=True)
+    total_n = len(customers)
+    churned_n = int((customers["churn_yn"] == "Y").sum())
+    churn_rate = round(100 * churned_n / total_n, 1)
 
-st.subheader("② 채널·만족도로 본 이탈")
-st.plotly_chart(
-    chart_channel_csat_recontact(data["consultations"], data["satisfaction"]),
-    use_container_width=True,
-)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("전체 고객 수", f"{total_n}명")
+    col2.metric("이탈 고객 수", f"{churned_n}명")
+    col3.metric("전체 이탈율", f"{churn_rate}%")
 
-st.subheader("③ 재문의 반복으로 본 이탈")
-st.plotly_chart(
-    chart_recontact_bucket_churn(data["consultations"], data["customers"]),
-    use_container_width=True,
-)
+    st.subheader("① VOC로 본 이탈")
+    st.plotly_chart(chart_voc_churn(data["customers"], data["voc"]), use_container_width=True)
 
-st.subheader("④ 요금제로 본 이탈")
-st.plotly_chart(chart_plan_churn(data["customers"]), use_container_width=True)
+    st.subheader("② 채널·만족도로 본 이탈")
+    st.plotly_chart(
+        chart_channel_csat_recontact(data["consultations"], data["satisfaction"]),
+        use_container_width=True,
+    )
 
-st.subheader("⑤ 지역으로 본 이탈")
-st.plotly_chart(chart_region_churn(data["customers"]), use_container_width=True)
+    st.subheader("③ 재문의 반복으로 본 이탈")
+    st.plotly_chart(
+        chart_recontact_bucket_churn(data["consultations"], data["customers"]),
+        use_container_width=True,
+    )
 
-st.subheader("⑥ 가입기간·이용량으로 본 이탈")
-st.plotly_chart(
-    chart_tenure_usage_scatter(data["customers"], data["usage"]), use_container_width=True
-)
+    st.subheader("④ 요금제로 본 이탈")
+    st.plotly_chart(chart_plan_churn(data["customers"]), use_container_width=True)
 
-st.subheader("상담원 관점: 직원만족도와 고객 경험")
-teams = sorted(data["agents"]["team"].unique())
-selected_team = st.selectbox("팀 선택", ["전체"] + teams)
-if selected_team == "전체":
-    filtered_agents = data["agents"]
-else:
-    filtered_agents = data["agents"][data["agents"]["team"] == selected_team]
+    st.subheader("⑤ 지역으로 본 이탈")
+    st.plotly_chart(chart_region_churn(data["customers"]), use_container_width=True)
 
-st.caption(f"선택된 팀 상담원 수: {len(filtered_agents)}명 (표본 30명 미만 — 참고용)")
-col_enps, col_burnout, col_training = st.columns(3)
-col_enps.plotly_chart(chart_agent_enps(filtered_agents), use_container_width=True)
-col_burnout.plotly_chart(
-    chart_agent_burnout_csat(filtered_agents, data["consultations"], data["satisfaction"]),
-    use_container_width=True,
-)
-col_training.plotly_chart(
-    chart_agent_training_comparison(filtered_agents, data["consultations"], data["satisfaction"]),
-    use_container_width=True,
-)
+    st.subheader("⑥ 가입기간·이용량으로 본 이탈")
+    st.plotly_chart(
+        chart_tenure_usage_scatter(data["customers"], data["usage"]), use_container_width=True
+    )
+
+    st.subheader("상담원 관점: 직원만족도와 고객 경험")
+    teams = sorted(data["agents"]["team"].unique())
+    selected_team = st.selectbox("팀 선택", ["전체"] + teams)
+    if selected_team == "전체":
+        filtered_agents = data["agents"]
+    else:
+        filtered_agents = data["agents"][data["agents"]["team"] == selected_team]
+
+    st.caption(f"선택된 팀 상담원 수: {len(filtered_agents)}명 (표본 30명 미만 — 참고용)")
+
+    st.plotly_chart(chart_agent_enps(filtered_agents), use_container_width=True)
+
+    col_burnout, col_training = st.columns(2)
+    col_burnout.plotly_chart(
+        chart_agent_burnout_csat(filtered_agents, data["consultations"], data["satisfaction"]),
+        use_container_width=True,
+    )
+    col_training.plotly_chart(
+        chart_agent_training_comparison(filtered_agents, data["consultations"], data["satisfaction"]),
+        use_container_width=True,
+    )
+
+with tab_report:
+    report_path = Path(__file__).parent / "report" / "고객서비스_만족도개선_리포트.md"
+    report_text = report_path.read_text(encoding="utf-8-sig")
+    if report_text.startswith("---"):
+        end = report_text.find("---", 3)
+        if end != -1:
+            report_text = report_text[end + 3 :].lstrip("\n")
+    st.markdown(report_text)
