@@ -14,6 +14,7 @@ RAW = Path(__file__).parent / "raw"
 DATA_DIR = Path(__file__).parent / "data"
 PROJECT_ID = "hudson-bq-practice-2026"
 DATASET = f"{PROJECT_ID}.practice_dataset"
+REACT_DASHBOARD_URL = "https://customer-churn-dashboard-web-jpfl.vercel.app"
 
 
 @st.cache_data
@@ -632,7 +633,12 @@ def render_report_with_toc(report_text):
 
 
 st.set_page_config(page_title="고객은 왜 이탈하는가", layout="wide")
-st.title("고객은 왜 이탈하는가 — 이탈 원인 진단 대시보드")
+
+col_title, col_link = st.columns([5, 1.4])
+with col_title:
+    st.title("고객은 왜 이탈하는가 — 이탈 원인 진단 대시보드")
+with col_link:
+    st.link_button("📱 대시보드 반응형 버전", REACT_DASHBOARD_URL, use_container_width=True)
 
 data = load_data()
 
