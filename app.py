@@ -708,13 +708,15 @@ with tab_report:
 
         col_open, col_download = st.columns(2)
         with col_open:
-            # 앞에 "/"를 반드시 붙여야 한다 — Streamlit Cloud는 앱을 도메인 루트가 아니라
-            # 중첩된 iframe 경로에서 서빙해서, "/" 없는 상대경로는 그 iframe의 현재 경로
-            # 기준으로 잘못 풀려 "file not found"가 난다. "/"로 시작하면 항상 도메인
-            # 루트(=이 앱 자체의 정적 서빙 경로) 기준으로 정확히 풀린다.
+            # 반드시 "/" 없는 상대경로여야 한다. Streamlit Community Cloud에서는
+            # 도메인 루트(streamlit.app/)가 우리 앱이 아니라 Streamlit Cloud 자체의
+            # 포털 셸이 차지하고 있고, 실제 앱 서버는 "/~/+/" 하위 경로에 떠 있다.
+            # "/"로 시작하는 절대경로는 도메인 루트(=포털 셸)로 잘못 풀려 file not
+            # found가 났다 — "/" 없이 상대경로로 두면 현재 앱이 떠 있는 그 하위 경로
+            # 기준으로 정확히 풀린다(로컬 개발 서버는 루트가 곧 "/"라 어느 쪽이든 동작함).
             st.link_button(
                 "🔗 새 창에서 PDF 열기 (인쇄/다운로드)",
-                "/app/static/고객서비스_만족도개선_리포트.pdf",
+                "app/static/고객서비스_만족도개선_리포트.pdf",
                 use_container_width=True,
             )
         with col_download:
