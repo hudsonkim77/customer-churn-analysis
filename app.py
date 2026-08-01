@@ -17,10 +17,17 @@ REACT_DASHBOARD_URL = "https://customer-churn-dashboard-web-jpfl.vercel.app"
 
 @st.cache_data
 def load_data():
+    consultations = pd.concat(
+        [
+            pd.read_csv(RAW / "data_consultations.csv", encoding="utf-8-sig"),
+            pd.read_csv(DATA_DIR / "data_consultations_2025_snapshot.csv", encoding="utf-8-sig"),
+        ],
+        ignore_index=True,
+    )
     return {
         "customers": pd.read_csv(RAW / "data_customers.csv", encoding="utf-8-sig"),
         "voc": pd.read_csv(RAW / "data_voc.csv", encoding="utf-8-sig"),
-        "consultations": pd.read_csv(RAW / "data_consultations.csv", encoding="utf-8-sig"),
+        "consultations": consultations,
         "satisfaction": pd.read_csv(RAW / "data_satisfaction.csv", encoding="utf-8-sig"),
         "usage": pd.read_csv(RAW / "data_usage_history.csv", encoding="utf-8-sig"),
     }
