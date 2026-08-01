@@ -44,6 +44,24 @@ textColor = "#ffffff"
 - `st.link_button`은 `<a>` 태그로 렌더링되므로, 좌측 정렬 CSS는
   `[data-testid^="stBaseButton"], [data-testid^="stBaseLinkButton"]`처럼 두 testid 접두사를
   모두 잡아야 한다(하나만 잡으면 링크 버튼만 중앙정렬로 남는 버그가 남)
+- **2026-08-01 추가 수정**: 위 선택자만으로는 실제로 배포 화면에서 텍스트가 계속 중앙정렬로
+  보이는 문제가 있었다. Playwright로 실제 DOM을 depth별로 뜯어보니, `<a>`/`<button>` 자체는
+  `justify-content: flex-start`가 정상 적용되지만 그 **안쪽에 Streamlit이 자체적으로 넣는
+  `div`·`span` 래퍼 2겹**이 각각 독립적으로 `display:flex; justify-content:center`를 갖고
+  있어서, 바깥 요소만 잡는 선택자로는 안쪽 래퍼의 중앙정렬을 못 이겼다. 해결: 버튼/링크버튼의
+  **모든 하위 요소**까지 `*`로 함께 잡아야 한다.
+  ```css
+  [data-testid="stSidebar"] [data-testid^="stBaseButton"],
+  [data-testid="stSidebar"] [data-testid^="stBaseLinkButton"],
+  [data-testid="stSidebar"] [data-testid^="stBaseButton"] *,
+  [data-testid="stSidebar"] [data-testid^="stBaseLinkButton"] * {
+      justify-content: flex-start !important;
+      text-align: left !important;
+  }
+  ```
+  로컬 `streamlit run` + Playwright로 depth 0~4(a→div→span→div→p) 전 구간의 computed style이
+  `flex-start`/`left`인 것까지 확인 후 반영했다 — 스크린샷만으로는 속아 넘어갈 수 있으니, DOM
+  트리를 실제로 순회해 확인하는 게 안전하다.
 - 메뉴 배지 색은 이 프로젝트 고유의 네온 그린을 그대로 사용(§2와 통일)
 
 ## 5. 가져오지 않은 것

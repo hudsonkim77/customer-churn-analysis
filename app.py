@@ -643,7 +643,9 @@ st.markdown(
         border-right: 1px solid rgba(255,255,255,0.12);
     }
     [data-testid="stSidebar"] [data-testid^="stBaseButton"],
-    [data-testid="stSidebar"] [data-testid^="stBaseLinkButton"] {
+    [data-testid="stSidebar"] [data-testid^="stBaseLinkButton"],
+    [data-testid="stSidebar"] [data-testid^="stBaseButton"] *,
+    [data-testid="stSidebar"] [data-testid^="stBaseLinkButton"] * {
         justify-content: flex-start !important;
         text-align: left !important;
     }
