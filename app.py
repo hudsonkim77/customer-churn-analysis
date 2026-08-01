@@ -610,6 +610,58 @@ def render_report_with_toc(report_text):
 
 st.set_page_config(page_title="고객은 왜 이탈하는가", layout="wide")
 
+PROJECT_MENU = [
+    {
+        "week": "2주차",
+        "title": "구매 협력사 성과·리스크 분석",
+        "url": "https://risk-analysis-week2-hskim.streamlit.app/",
+        "current": False,
+    },
+    {
+        "week": "3주차",
+        "title": "고객은 왜 이탈하는가",
+        "url": None,
+        "current": True,
+    },
+    {
+        "week": "4주차",
+        "title": "마케팅 채널 효율",
+        "url": "https://marketing-channel-efficiency-week4-uuqc2z7cabyqkqowfeturz.streamlit.app/",
+        "current": False,
+    },
+]
+
+st.markdown(
+    """
+    <style>
+    .project-menu-badge {
+        font-weight: 800; letter-spacing: 0.02em; font-size: 0.95rem;
+        color: #3bffa0; text-shadow: 0 0 10px #3bffa066;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #2a2a30;
+        border-right: 1px solid rgba(255,255,255,0.12);
+    }
+    [data-testid="stSidebar"] [data-testid^="stBaseButton"],
+    [data-testid="stSidebar"] [data-testid^="stBaseLinkButton"] {
+        justify-content: flex-start !important;
+        text-align: left !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+with st.sidebar:
+    st.markdown('<span class="project-menu-badge">● 프로젝트 메뉴</span>', unsafe_allow_html=True)
+    st.caption("클릭하면 해당 주차 배포 앱으로 이동합니다")
+    for item in PROJECT_MENU:
+        label = f"{'▶ ' if item['current'] else ''}{item['week']} · {item['title']}"
+        if item["current"]:
+            st.button(label, disabled=True, use_container_width=True, key="nav_current")
+        else:
+            st.link_button(label, item["url"], use_container_width=True)
+
 col_title, col_link = st.columns([5, 1.4])
 with col_title:
     st.title("고객은 왜 이탈하는가 — 이탈 원인 진단 대시보드")
